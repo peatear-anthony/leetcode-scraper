@@ -47,44 +47,53 @@ def get_page_numbers(url):
                 return 'skip'
             time.sleep(0.5)
 
+
+def get_post_from_url(url):
+    print(f'Current URL: {url}')
+    page_numbers = get_page_numbers(url)
+    if page_numbers == 'skip':
+        return None
+    for page in page_numbers[:PAGE_LIMIT]:
+        if USER_NAME in driver.page_source:
+            link_element = driver.find_element_by_xpath(
+                "//*[contains(text(),'peatear-anthony')]/../../../..//*[contains(@class,'title-link__1ay5')]"
+                )
+            post_link = link_element.get_attribute('href')
+            like_element = driver.find_element_by_xpath(
+                "//*[contains(text(),'peatear-anthony')]/../../../../..//*[contains(@class, 'no__1erK')]"
+                )
+            num_of_likes = int(like_element.text)
+            return({'link': post_link,
+                'number_of_likes': num_of_likes})
+        url_suffix = f'/discuss/?currentPage={str(page)}&orderBy=hot&query=&tag=python'
+        tmp_url = url + url_suffix
+        driver.get(tmp_url)   
+
 def get_post_dic(problem_urls):
     leetcode_posts = []
-    for index, url in enumerate(problem_urls): 
-        print(f'{index + 1} / {len(problem_urls)}')
-        print(f'Current URL: {url}')
-        page_numbers = get_page_numbers(url)
-        if page_numbers == 'skip':
-            next
-        for page in page_numbers[:PAGE_LIMIT]:
-            if USER_NAME in driver.page_source:
-                link_element = driver.find_element_by_xpath(
-                    "//*[contains(text(),'peatear-anthony')]/../../../..//*[contains(@class,'title-link__1ay5')]"
-                    )
-                post_link = link_element.get_attribute('href')
-                like_element = driver.find_element_by_xpath(
-                    "//*[contains(text(),'peatear-anthony')]/../../../../..//*[contains(@class, 'no__1erK')]"
-                    )
-                num_of_likes = int(like_element.text)
-                leetcode_posts.append(
-                    {'link': post_link,
-                    'number_of_likes': num_of_likes }
-                )
-                break
-            url_suffix = f'/discuss/?currentPage={str(page)}&orderBy=hot&query=&tag=python'
-            tmp_url = url + url_suffix
-            driver.get(tmp_url)
-    return leetcode_posts
+    try:
+        for index, url in enumerate(problem_urls): 
+            print(f'{index + 1} / {len(problem_urls)}')
+            post  = get_post_from_url(url)
+            if post:
+                leetcode_posts.append(post)
+    except Exception as e:
+        raise e
+    finally:
+        return leetcode_posts
 
 
 if __name__ == "__main__":
     problem_urls = get_problem_base_urls()
-    leetcode_posts = get_post_dic(problem_urls)
-
-    csv_columns = ['link', 'number_of_likes']
-    file_name = 'leetcode_post_data.csv'
-
-    with open(file_name, 'w+', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
-        writer.writeheader()
-        for row in leetcode_posts:
-            writer.writerow(row)
+    try:
+        leetcode_posts = get_post_dic(problem_urls)
+    except Exception as e:
+        raise e
+    finally:
+        csv_columns = ['link', 'number_of_likes']
+        file_name = 'leetcode_post_data.csv'
+        with open(file_name, 'w+', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
+            writer.writeheader()
+            for row in leetcode_posts:
+                writer.writerow(row)
